@@ -1,118 +1,106 @@
-# import os
-# import requests
-# import matplotlib.pyplot as plt
-# # You can access the image with PIL.Image for example
-# import io
-# from PIL import Image
+import numpy as np
 
-# API_URL = "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-dev"
-# HF_TOKEN = os.environ.get('HF_TOKEN') # Set HuggingFace environment
+# Google Drive
+from pydrive.auth import GoogleAuth
+from pydrive.drive import GoogleDrive
 
-# # check
-# if HF_TOKEN is None:
-#     raise ValueError("Please set the HF_TOKEN environment variable or assign your token to HF_TOKEN.")
-
-# headers = {
-#     "Authorization": f"Bearer {HF_TOKEN}",
-# }
-
-# # Get API URL
-# def query(payload):
-#     response = requests.post(API_URL, headers=headers, json=payload)
-#     return response.content
-
-# def get_image(request):
-#     payload = { "inputs": request,}
-#     img_bytes = query(payload)
-#     image = Image.open(io.BytesIO(img_bytes))
-#     return img_bytes, image
-
-# bytes, image = get_image("A photo of a cat")
-# plt.imshow(image)
-# plt.axis("off")
-# plt.show()
-
-from datetime import datetime
-import pandas as pd
-
+# Google Sheets
 import gspread
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
+import pandas as pd
 
-scrope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-creds = Credentials.from_service_account_file("credentials.json", scopes=scrope)
+# Image Generation
+from diffusers import DiffusionPipeline
+
+import glob
+from dotenv import load_dotenv
+import os
+
+# Load từ .env
+load_dotenv()
+
+# Truy xuất biến
+SHEET_ID = os.getenv("SHEET_ID")
+CREDENTIALS_PATH = os.getenv("CREDENTIALS_PATH")
+MODEL_ID = os.getenv("MODEL_ID")
+FOLDER_PATH = os.getenv("FOLDER_PATH")
+
+print("Sheet ID:", SHEET_ID)
+print("Credentials path:", CREDENTIALS_PATH)
+print("Model ID:", MODEL_ID)
+print("Folder generated path:", FOLDER_PATH)
+
+# ============== GET REQUIREMENTS (Google Sheet) ==============
+scrope = ["https://www.googleapis.com/auth/spreadsheets"]
+# json config from Google Cloud
+creds = Credentials.from_service_account_file(CREDENTIALS_PATH, scopes=scrope) 
 client = gspread.authorize(creds)
+workbook = client.open_by_key(str(SHEET_ID))
 
-sheet_id = "1DvHyHppSVrMOi-ARTo-qari95F7AS7khPhH4D4hCmsA"
-workbook = client.open_by_key(sheet_id)
-
+# Get all sheet names
 sheets = map(lambda x: x.title, workbook.worksheets())
 print(f"Number of sheets: {list(sheets)}")
 
+# Choose sheet and get data
 sheet = workbook.worksheet("Sheet1")
 data = sheet.get_all_values()
+data = pd.DataFrame(data[1:3], columns=data[0])
 
-# URL of the image you want to insert
-# SỬ DỤNG URL HÌNH ẢNH THÔ TỪ GITHUB
-image_url = "https://raw.githubusercontent.com/Vinh-Gogo/auto-system/main/Header-Gift-BarYellow.png"
+# Visualize sheet data important
+# print(data['Description'].values); print(data['Name'].values); print(data['Model'].values)
 
-# target cell
-cell_address = "B2"
+# ============== UPGRADE TEXT REQUIREMENTS (Text-to-Text) ==============
+# '''
+# 
+#  Chưa thực hiện 
+# 
+# 
+# '''
+#
 
-# build the IMAGE formula (optional arguments control sizing)
-formula = f'=IMAGE("{image_url}", 4, 100, 100)'
+# ============== IMAGE GENERATION & UPDATE SHEET ==============
+# Generate images using the model
+pipe = DiffusionPipeline.from_pretrained(MODEL_ID) # OKE L4
 
-try:
-    sheet.update(cell_address, formula)
-    print(f"Đã cập nhật ô {cell_address} thành công với công thức: {formula}")
-except gspread.exceptions.APIError as e:
-    print(f"Lỗi API khi cập nhật ô {cell_address}: {e}")
-except Exception as e:
-    print(f"Một lỗi không mong muốn đã xảy ra: {e}")
+rows = data[['Name', 'Description', 'Model']].values
 
+index = 2
+for name, description in zip(data['Name'].values, data['Description'].values):
+  print(f'Task for: {np.array([name, description])}')
+  prompt = description + ", detailed, 4k"
+  image = pipe(prompt).images[0]
+  
+  # save image
+  image.save(f"{FOLDER_PATH}/{name}.jpg")
+  
+  # update sheet
+  try:
+    sheet.update_acell(f"H{index}", f"SUCCESS")
+    sheet.update_acell(f"G{index}", f"{MODEL_ID}")
+  except Exception as e:
+    print(f"don't update values sheet at row {index} ! an unexpected error occurred: {e}")
+  finally:
+    index += 1
+    print(f"Created image: {name}.jpg")
 
-# today = datetime.today()
-# formatted = today.strftime("%d/%m/%Y")  # dạng: DD/MM/YYYY
-# print("Hôm nay là:", formatted)
+# ============== UPLOAD IAMGE TO GOOGLE DRIVE ==============
 
-# def get_pending_rows(data) -> pd.DataFrame:
-#     df = pd.DataFrame(data[1:], columns=data[0])
-#     pending_rows = df[df['Status'] == 'pending']
-#     return pending_rows
+# google_auth = GoogleAuth() # Yêu cầu xác thực Google 'client_secrets.json' đã được cấu hình
+# drive_app = GoogleDrive(google_auth)
 
-# pending_df = get_pending_rows(data).head(3)
-# # print(f"Descriptions: {pending_df.shape[0]}\n", pending_df[['ID', 'Description', 'Status']])  # Assuming the first row is the header
-# # print(f"Descriptions values:\n", pending_df['Description'].values)
+# Các định dạng ảnh bạn muốn lọc
+image_extensions = ['*.png', '*.jpg', '*.jpeg', '*.bmp', '*.gif']
+# Tạo danh sách file ảnh
+ls_files = []
+for ext in image_extensions:
+    ls_files.extend(glob.glob(os.path.join(str(FOLDER_PATH), ext)))
 
-# for x,y in zip(pending_df['ID'].astype(int), pending_df['Description']):
-#     print(type(x), type(y))
-#     print(f"ID: {x}, Description: {y}")
-#     print()
-#     byte, image = get_image(y)
-#     pending_df.at[x, 'bytes'] = byte
+# ls_files = ['young_man.png', 'aa.png'] # Danh sách giả lập
 
-#     sheet.update_cell(x + 2, 6, str(byte))  # Assuming the 'bytes' column is the 4th column in the sheet
-#     plt.imshow(image)
-#     plt.axis("off")
-#     plt.show()
-
-# # for idx, row in pending_df.iterrows():
-# #     print(f"Processing row {idx}: ID={row['ID']}, Description={row['Description']}, Status={row['Status']}")
-# #     print()
-# #     print(row['Description'])
-# #     print()
-# #     # # Get images from descriptions
-# #     img_bytes, image = get_image(row['Description'])
-# #     # plt.imshow(image)
-# #     # plt.axis("off")
-# #     # plt.show()
-
-# #     # Save bytes images to pending_df
-# #     pending_df.at[idx, 'bytes'] = str(img_bytes)
-
-# # # Save the updated DataFrame back to the Google Sheet
-# # for idx, row in pending_df.iterrows():
-# #     sheet.update_cell(idx + 2, 6, row['bytes'])  # Assuming the 'bytes' column is the 4th column in the sheet
-
-    
-
+# # Thực hiện upload các tệp lên Google Drive
+# for file_name in ls_files:
+#   file = drive_app.CreateFile({'title': file_name, 'parents': [{'id': '1eik5Qr7e1S0CYwCpDFFHoV9VoCXH0Vk3'}]})
+#   file.SetContentFile(file_name)
+#   file.Upload()
+#   print(f"Uploaded {file_name} with ID: {file['id']}")
