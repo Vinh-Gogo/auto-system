@@ -16,6 +16,11 @@ from diffusers import DiffusionPipeline
 # Text-to-Text Generation
 import google.generativeai as genai
 
+# STMP_MAIL
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
 import glob
 from dotenv import load_dotenv
 import os
@@ -29,12 +34,40 @@ FOLDER_DRIVE_ID = os.getenv("FOLDER_DRIVE_ID")
 CREDENTIALS_PATH = os.getenv("CREDENTIALS_PATH")
 MODEL_ID = os.getenv("MODEL_ID")
 FOLDER_GENERATOR_PATH = os.getenv("FOLDER_GENERATOR_PATH")
+admin_email = "s8230201@gmail.com" # email admin
 
 print("Sheet ID:", SHEET_ID)
 print("Folder Drive ID:", FOLDER_DRIVE_ID)
 print("Credentials path:", CREDENTIALS_PATH)
 print("Model ID:", MODEL_ID)
 print("Folder generated path:", FOLDER_GENERATOR_PATH)
+
+def send_mail_to_admin(subject, message_body, admin_email):
+    # Cấu hình SMTP
+    SMTP_SERVER = "smtp.gmail.com"
+    SMTP_PORT = 587
+    SMTP_USER = "lea26462@gmail.com"
+    SMTP_PASSWORD = "gaouituuamwxyxgr"
+
+    # Tạo email
+    msg = MIMEMultipart("alternative")
+    msg['From'] = SMTP_USER
+    msg['To'] = admin_email
+    msg['Subject'] = subject
+
+    # Nội dung HTML
+    html_part = MIMEText(message_body, 'html')
+    msg.attach(html_part)
+
+    try:
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(SMTP_USER, SMTP_PASSWORD)
+        server.send_message(msg)
+        server.quit()
+        print("✅ Email HTML đã được gửi đến admin.")
+    except Exception as e:
+        print(f"❌ Gửi email thất bại: {e}")
 
 # ============== GET REQUIREMENTS (Google Sheet) ==============
 scrope = ["https://www.googleapis.com/auth/spreadsheets"]
@@ -73,9 +106,9 @@ for row in rows:
       f'''
       Nhiệm vụ chính: tạo ra 1 *lời nhắc (prompt) tiếng Anh nâng cấp dưới 40 từ* mới.
       Yêu cầu: Ngắn gọn, mạnh mẽ cho AI, Tập trung Chi tiết, Độ bóng cho Game, Độ phân giải 4k, Tách nền.
-      Đầu vào: {description}.
-      Đầu ra: Title của content: Content.
-      Ví dụ đầu ra: A meticulously crafted, hyper-detailed 2D game UI icon: a right-pointing triangular arrow. Rendered in lustrous metallic gold, featuring a pronounced 3D embossed effect with high polish and intense reflectivity. 4K resolution. Isolated on a transparent background.
+      *Đầu vào* {description}.
+      *Đầu ra* Name Image: Disctiptions.
+      *Ví dụ đầu ra* Arrow: a right-pointing triangular arrow. Rendered in lustrous metallic gold, featuring a pronounced 3D embossed effect with high polish and intense reflectivity. 4K resolution. Isolated on a transparent background.
       '''
   )
   
@@ -91,13 +124,18 @@ drive_app = GoogleDrive(google_auth)
 # ============== IMAGE GENERATION & UPDATE SHEET ==============
 
 # Generate images using the model
+
 pipe = DiffusionPipeline.from_pretrained(MODEL_ID)
 pipe.safety_checker = None # Tắt safety checker để tránh lỗi
 pipe.enable_attention_slicing() # Tăng tốc độ sinh ảnh
 
+
+
 def get_current_time():
   from datetime import datetime
   return f'{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}'
+
+
 
 for row in rows:
   id, name, description, upgrade_description, model_name, type = row
@@ -136,24 +174,60 @@ for row in rows:
     index += 1
     print(f"Created image: {name}.{type.lower()} at index {index}")
 
+  # Upload image to Google Drive
   file = drive_app.CreateFile({'title': f'{get_current_time()}_{name}', 'parents': [{'id': FOLDER_DRIVE_ID}]})
   file.SetContentFile(path_image)
   file.Upload()
   print(f"Uploaded {name} with ID: {file['id']}")
 
+  # Update Google Sheet with the file link
   path_drive = f"https://drive.google.com/file/d/{file['id']}/view"
   sheet.update_acell(f"G{index-1}", f"{path_drive}")
 
-# ====================== TEMPORARY CODE TO UPLOAD IMAGES ======================
-# image_extensions = ['*.png', '*.jpg', '*.jpeg', '*.bmp', '*.gif']
-# # Tạo danh sách file ảnh
-# ls_files = []
-# for ext in image_extensions:
-#     ls_files.extend(glob.glob(os.path.join(str(FOLDER_GENERATOR_PATH), ext)))
-
-# # Thực hiện upload các tệp lên Google Drive
-# for file_name in ls_files:
-#   file = drive_app.CreateFile({'title': f'{}_{file_name}', 'parents': [{'id': FOLDER_DRIVE_ID}]})
-#   file.SetContentFile(file_name)
-#   file.Upload()
-#   print(f"Uploaded {file_name} with ID: {file['id']}")
+  # Send email notification
+  subject = "CREATED IMAGE NOTIFICATION"
+  message = f"""
+    <html>
+    <head>
+      <style>
+        body {{ font-family: Arial, sans-serif; }}
+        .container {{
+          border: 1px solid #ddd;
+          border-radius: 8px;
+          padding: 20px;
+          background-color: #f9f9f9;
+          max-width: 600px;
+          margin: auto;
+        }}
+        h2 {{ color: #2c3e50; }}
+        table {{
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 10px;
+        }}
+        td {{
+          padding: 8px;
+          border-bottom: 1px solid #eee;
+        }}
+        .label {{ font-weight: bold; color: #555; }}
+        .value {{ color: #333; }}
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h2>🎉 Image Creation Successful</h2>
+        <p>Image for <strong>12</strong> has been successfully created and uploaded to Google Drive.</p>
+        <table>
+          <tr><td class="label">Name:</td><td class="value">{name}</td></tr>
+          <tr><td class="label">Description:</td><td class="value">{description}</td></tr>
+          <tr><td class="label">Upgrade Description:</td><td class="value">{upgrade_description}</td></tr>
+          <tr><td class="label">Model:</td><td class="value">{model_name}</td></tr>
+          <tr><td class="label">Image Type:</td><td class="value">{type}</td></tr>
+          <tr><td class="label">Image Link:</td><td class="value"><a href="{path_drive}">View Image</a></td></tr>
+          <tr><td class="label">Time:</td><td class="value">{get_current_time()}</td></tr>
+        </table>
+      </div>
+    </body>
+    </html>
+  """
+  send_mail_to_admin(subject, message, admin_email)
