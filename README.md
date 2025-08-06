@@ -1,6 +1,8 @@
 # auto-system
 image-generator
 
+`TÔi sẽ thêm hướng dẫn cài đặt sau. xin cảm ơn.`
+
 # Prompt Engineer / Automation Engineer tại Athena.
 ## Bài test 1: Tự động hóa (Automation Task)
 Mục tiêu là thiết kế và xây dựng một quy trình tự động hóa hoàn chỉnh.
