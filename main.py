@@ -34,7 +34,10 @@ FOLDER_DRIVE_ID = os.getenv("FOLDER_DRIVE_ID")
 CREDENTIALS_PATH = os.getenv("CREDENTIALS_PATH")
 MODEL_ID = os.getenv("MODEL_ID")
 FOLDER_GENERATOR_PATH = os.getenv("FOLDER_GENERATOR_PATH")
-admin_email = "s8230201@gmail.com" # email admin
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL") # your email admin
+EMAIL_SERVICE = os.getenv("EMAIL_SERVICE") # your email service, e.g., gmail
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 print("Sheet ID:", SHEET_ID)
 print("Folder Drive ID:", FOLDER_DRIVE_ID)
@@ -46,8 +49,7 @@ def send_mail_to_admin(subject, message_body, admin_email):
     # Cấu hình SMTP
     SMTP_SERVER = "smtp.gmail.com"
     SMTP_PORT = 587
-    SMTP_USER = "lea26462@gmail.com"
-    SMTP_PASSWORD = "gaouituuamwxyxgr"
+    SMTP_USER = str(EMAIL_SERVICE)
 
     # Tạo email
     msg = MIMEMultipart("alternative")
@@ -62,7 +64,7 @@ def send_mail_to_admin(subject, message_body, admin_email):
     try:
         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
         server.starttls()
-        server.login(SMTP_USER, SMTP_PASSWORD)
+        server.login(SMTP_USER, str(SMTP_PASSWORD))
         server.send_message(msg)
         server.quit()
         print("✅ Email HTML đã được gửi đến admin.")
@@ -93,7 +95,7 @@ rows = data[['ID', 'Name', 'Description', 'Upgrade Description', 'Model', 'Type'
 
 # ============== UPGRADE TEXT REQUIREMENTS (Text-to-Text) ==============
 # Configure the API key directly
-genai.configure(api_key="AIzaSyAERRGM2EsZvyhIXhD3umhyQbiLuhGCqVo")
+genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel("gemini-2.5-flash")
 
 for row in rows:
@@ -105,7 +107,7 @@ for row in rows:
       contents=
       f'''
       Nhiệm vụ chính: tạo ra 1 *lời nhắc (prompt) tiếng Anh nâng cấp dưới 40 từ* mới.
-      Yêu cầu: Ngắn gọn, mạnh mẽ cho AI, Tập trung Chi tiết, Độ bóng cho Game, Độ phân giải 4k, Tách nền.
+      Yêu cầu: Góc nhìn chính diện, ngắn gọn, Tập trung Chi tiết, Độ bóng cho Game, Độ phân giải 4k.
       *Đầu vào* {description}.
       *Đầu ra* Name Image: Disctiptions.
       *Ví dụ đầu ra* Arrow: a right-pointing triangular arrow. Rendered in lustrous metallic gold, featuring a pronounced 3D embossed effect with high polish and intense reflectivity. 4K resolution. Isolated on a transparent background.
@@ -230,4 +232,4 @@ for row in rows:
     </body>
     </html>
   """
-  send_mail_to_admin(subject, message, admin_email)
+  send_mail_to_admin(subject, message, ADMIN_EMAIL)
