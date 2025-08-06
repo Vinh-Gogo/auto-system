@@ -2,8 +2,12 @@
 image-generator
 
 `Kiếm trúc pdf sai một ít chính tả. Tôi sẽ thêm hướng dẫn cách cài đặt sau. xin cảm ơn.`
+
 Kiến trúc hệ thống: automation-image-generator.pdf
 
+Link image-generated: https://drive.google.com/drive/folders/1eik5Qr7e1S0CYwCpDFFHoV9VoCXH0Vk3?usp=sharing
+
+Link sheet: https://docs.google.com/spreadsheets/d/1stgBPwj0oNmUseNZES0_-4Ua5r4HScLFA6DdmVVqLog/edit?usp=sharing
 
 # Prompt Engineer / Automation Engineer tại Athena.
 ## Bài test 1: Tự động hóa (Automation Task)
