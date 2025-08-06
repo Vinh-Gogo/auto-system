@@ -1,7 +1,9 @@
 # auto-system
 image-generator
 
-`TÔi sẽ thêm hướng dẫn cài đặt sau. xin cảm ơn.`
+`Kiếm trúc pdf sai một ít chính tả. Tôi sẽ thêm hướng dẫn cách cài đặt sau. xin cảm ơn.`
+Kiến trúc hệ thống: automation-image-generator.pdf
+
 
 # Prompt Engineer / Automation Engineer tại Athena.
 ## Bài test 1: Tự động hóa (Automation Task)
