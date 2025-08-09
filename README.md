@@ -1,5 +1,4 @@
 # auto-system
-image-generator
 
 `Kiếm trúc pdf sai một ít chính tả. Tôi sẽ thêm hướng dẫn cách cài đặt sau. xin cảm ơn.`
 

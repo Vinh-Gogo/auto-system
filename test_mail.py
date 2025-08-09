@@ -1,13 +1,21 @@
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from dotenv import load_dotenv
+import os
+
+# Load từ .env
+load_dotenv()
+
+STMP_USER = str(os.getenv("EMAIL_SERVICE"))  # your email service, e.g., gmail
+STMP_PASSWORD = str(os.getenv("SMTP_PASSWORD"))
 
 def send_mail_to_admin(subject, message_body, admin_email):
     # Cấu hình SMTP
     SMTP_SERVER = "smtp.gmail.com"
     SMTP_PORT = 587
-    SMTP_USER = "lea26462@gmail.com"
-    SMTP_PASSWORD = "gaouituuamwxyxgr"
+    SMTP_USER = STMP_USER
+    SMTP_PASSWORD = STMP_PASSWORD
 
     # Tạo email
     msg = MIMEMultipart("alternative")

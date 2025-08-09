@@ -72,6 +72,7 @@ def send_mail_to_admin(subject, message_body, admin_email):
         print(f"❌ Gửi email thất bại: {e}")
 
 # ============== GET REQUIREMENTS (Google Sheet) ==============
+print("Connecting to Google Sheets...")
 scrope = ["https://www.googleapis.com/auth/spreadsheets"]
 # json config from Google Cloud
 creds = Credentials.from_service_account_file(CREDENTIALS_PATH, scopes=scrope) 
@@ -82,6 +83,7 @@ workbook = client.open_by_key(str(SHEET_ID))
 sheets = map(lambda x: x.title, workbook.worksheets())
 print(f"Number of sheets: {list(sheets)}")
 
+print("Fetching data from Google Sheet...")
 # Choose sheet and get data
 sheet = workbook.worksheet("Sheet1")
 data = sheet.get_all_values()
@@ -94,29 +96,36 @@ data['ID'] = data['ID'].astype(int)
 rows = data[['ID', 'Name', 'Description', 'Upgrade Description', 'Model', 'Type']].values
 
 # ============== UPGRADE TEXT REQUIREMENTS (Text-to-Text) ==============
-# Configure the API key directly
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-2.5-flash")
 
-for row in rows:
-  id, name, description, upgrade_description, model_name, type = row
-  print(f'Task for id={id}: ({name}) {description}')
+# print("Upgrading text requirements using Gemini API...")
+# for row in rows:
+#   id, name, description, upgrade_description, model_name, type = row
+#   print(f'Task for id={id}: ({name}) {description}')
   
-  # Generate content
-  response = model.generate_content(
-      contents=
-      f'''
-      Nhiệm vụ chính: tạo ra 1 *lời nhắc (prompt) tiếng Anh nâng cấp dưới 40 từ* mới.
-      Yêu cầu: Góc nhìn chính diện, ngắn gọn, Tập trung Chi tiết, Độ bóng cho Game, Độ phân giải 4k.
-      *Đầu vào* {description}.
-      *Đầu ra* Name Image: Disctiptions.
-      *Ví dụ đầu ra* Arrow: a right-pointing triangular arrow. Rendered in lustrous metallic gold, featuring a pronounced 3D embossed effect with high polish and intense reflectivity. 4K resolution. Isolated on a transparent background.
-      '''
-  )
+#   if len(upgrade_description) > 0:
+#     print(f"Upgraded description for id={id} because it is not empty.")
+#     print(f"Upgrade Description: {upgrade_description}")
+#     continue
   
-  index = id + 1
-  sheet.update_acell(f"E{index}", f"{response.text}")  # Update Upgrade Description
-  print(f'\n{response.text}\n')  # Print the generated text content
+#   # Configure the API key directly
+#   genai.configure(api_key=GEMINI_API_KEY)
+#   model = genai.GenerativeModel("gemini-2.5-flash")
+
+#   # Generate content
+#   response = model.generate_content(
+#       contents=
+#       f'''
+#       Nhiệm vụ chính: tạo ra 1 *lời nhắc (prompt) tiếng Anh nâng cấp dưới 40 từ* mới.
+#       Yêu cầu: Góc nhìn chính diện, ngắn gọn, Tập trung Chi tiết, Độ bóng cho Game, Độ phân giải 4k.
+#       *Đầu vào* {description}.
+#       *Đầu ra* Name Image: Disctiptions.
+#       *Ví dụ đầu ra* Arrow: a right-pointing triangular arrow. Rendered in lustrous metallic gold, featuring a pronounced 3D embossed effect with high polish and intense reflectivity. 4K resolution. Isolated on a transparent background.
+#       '''
+#   )
+  
+#   index = id + 1
+#   sheet.update_acell(f"E{index}", f"{response.text}")  # Update Upgrade Description
+#   print(f'\n{response.text}\n')  # Print the generated text content
 
 # ============== UPLOAD IAMGE TO GOOGLE DRIVE ==============
 
@@ -128,10 +137,20 @@ drive_app = GoogleDrive(google_auth)
 # Generate images using the model
 
 pipe = DiffusionPipeline.from_pretrained(MODEL_ID)
-pipe.safety_checker = None # Tắt safety checker để tránh lỗi
-pipe.enable_attention_slicing() # Tăng tốc độ sinh ảnh
+# pipe.enable_attention_slicing() # Tăng tốc độ sinh ảnh
+pipe.enable_model_cpu_offload()
 
+# import torch
+# from diffusers import StableDiffusion3Pipeline
 
+# from transformers import AutoTokenizer
+# from diffusers import StableDiffusion3Pipeline
+
+# # Tải tokenizer nhanh trực tiếp.
+# pipe = AutoTokenizer.from_pretrained("stabilityai/stable-diffusion-3.5-medium", subfolder="tokenizer_3", use_fast=True)
+
+# pipe = StableDiffusion3Pipeline.from_pretrained("stabilityai/stable-diffusion-3.5-medium", torch_dtype=torch.bfloat16)
+# pipe.enable_model_cpu_offload()
 
 def get_current_time():
   from datetime import datetime
